@@ -1,6 +1,6 @@
 /* Collecson phone app. App files come from this site; collection data always comes live
    from the collector's own Apps Script and is never cached here. */
-const CACHE = 'collecson-app-cs9-20261122a';
+const CACHE = 'collecson-app-cs9-20261122c';
 const BASE = new URL(self.registration.scope).pathname;   // wherever the app is hosted
 const SHELL = ['./', './index.html', './app.js?cs9-20261122a', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './lib/zxing.min.js?v4', './assets/LuckiestGuy-Regular.ttf'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
