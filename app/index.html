@@ -1071,6 +1071,7 @@
   <input id="camInput" type="file" accept="image/*" capture="environment" hidden>
   <input id="vidInput" type="file" accept="video/*" capture="environment" hidden>
   <input id="pickInput" type="file" accept="image/*,video/*" multiple hidden>
+  <input id="docInput" type="file" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain,image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.odt,.txt,.jpg,.jpeg,.png,.webp" hidden>
 
   <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
     <div class="sheetCard">
@@ -1125,7 +1126,7 @@
 (function () {
   'use strict';
   var PFX = 'ck_'; window.LS_PREFIX = PFX;
-  var VER = 'cs94-20261122a';
+  var VER = 'cs95-20261122a';
   var L = {
     get: function (k) { try { return localStorage.getItem(PFX + k) || ''; } catch (e) { return ''; } },
     set: function (k, v) { try { localStorage.setItem(PFX + k, v); } catch (e) { /* full or private */ } },
@@ -1310,7 +1311,7 @@
       currency: info.currency || '\u00A3', categories: (info.categories || []).join('\n'),
       users: info.users && info.users.length ? info.users.map(function (u) { return { name: u.name, role: u.role }; }) : [{ name: '', role: 'Owner' }],
       pin: '', pin2: '', logo: null, bg: null, removeLogo: false, removeBg: false, err: '', showPeople: false,
-      x: info.extras || { shareHandle: '', kidFunWorth: false, kidLetterTitle: '', kidLetter: '', kidNotes: '' }
+      x: info.extras || { shareHandle: '', kidFunWorth: false, kidLetterTitle: '', kidLetter: '', kidNotes: '', kidsCanAddDocs: false }
     };
     if (!W.users.some(function (u) { return u.role === 'Owner'; })) W.users.unshift({ name: '', role: 'Owner' });
     W.users.sort(function (a, b) { return (a.role === 'Owner' ? 0 : 1) - (b.role === 'Owner' ? 0 : 1); });   // owner first, always
@@ -1390,7 +1391,8 @@
             '<label for="wKidTitle">Letter title</label><input type="text" id="wKidTitle" maxlength="100" value="' + esc(W.x.kidLetterTitle) + '" placeholder="e.g. How our collection started">' +
             '<label for="wKidLetter">A letter they see now and then (leave blank for none)</label><textarea id="wKidLetter" maxlength="12000" placeholder="Write it like a note. Leave a blank line between paragraphs.">' + esc(W.x.kidLetter) + '</textarea>' +
             '<label for="wKidNotes">Little notes, one per line (blank = friendly ones we wrote)</label><textarea id="wKidNotes" maxlength="12000" placeholder="Proud of you!">' + esc(W.x.kidNotes) + '</textarea>' +
-            '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidFun"' + (W.x.kidFunWorth ? ' checked' : '') + ' style="width:22px;height:22px"> Show a fun \u201Cwhat\u2019s it worth?\u201D card in ice creams, dogs and pizzas (never real money)</label></div>' : '') +
+            '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidFun"' + (W.x.kidFunWorth ? ' checked' : '') + ' style="width:22px;height:22px"> Show a fun \u201Cwhat\u2019s it worth?\u201D card in ice creams, dogs and pizzas (never real money)</label>' +
+            '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidDocs"' + (W.x.kidsCanAddDocs ? ' checked' : '') + ' style="width:22px;height:22px"> Kids can add manuals and certificates (not receipts or valuations)</label></div>' : '') +
           nav();
       } else if (W.step === 5) {
         var p = pal();
@@ -1408,7 +1410,7 @@
     function grab() {
       if ($('wName')) { W.name = $('wName').value.trim(); W.tagline = $('wTag').value.trim(); W.currency = $('wCur').value; W.x.shareHandle = $('wHandle').value.trim(); }
       if ($('wOwner')) W.users[0].name = $('wOwner').value.trim();
-      if ($('wKidLetter')) { W.x.kidLetterTitle = $('wKidTitle').value.trim(); W.x.kidLetter = $('wKidLetter').value; W.x.kidNotes = $('wKidNotes').value; W.x.kidFunWorth = $('wKidFun').checked; }
+      if ($('wKidLetter')) { W.x.kidLetterTitle = $('wKidTitle').value.trim(); W.x.kidLetter = $('wKidLetter').value; W.x.kidNotes = $('wKidNotes').value; W.x.kidFunWorth = $('wKidFun').checked; if ($('wKidDocs')) W.x.kidsCanAddDocs = $('wKidDocs').checked; }
       if ($('wCats')) W.categories = $('wCats').value;
       document.querySelectorAll('[data-un]').forEach(function (el) { W.users[+el.getAttribute('data-un')].name = el.value.trim(); });
       document.querySelectorAll('[data-ur]').forEach(function (el) { W.users[+el.getAttribute('data-ur')].role = el.value; });
@@ -1480,8 +1482,8 @@
       var data = { name: W.name, tagline: W.tagline, palette: W.palette, accent: W.accent, currency: W.currency, collectionType: W.type, categories: cats(),
         users: W.users.filter(function (u) { return u.name; }), pin: W.pin, logo: W.logo ? { mime: W.logo.mime, b64: W.logo.b64 } : null,
         bg: W.bg ? { mime: W.bg.mime, b64: W.bg.b64 } : null, removeLogo: W.removeLogo, removeBg: W.removeBg,
-        shareHandle: W.x.shareHandle, kidFunWorth: !!W.x.kidFunWorth, kidLetterTitle: W.x.kidLetterTitle, kidLetter: W.x.kidLetter, kidNotes: W.x.kidNotes };
-      if (!first && !info.extras) ['shareHandle', 'kidFunWorth', 'kidLetterTitle', 'kidLetter', 'kidNotes'].forEach(function (k) { delete data[k]; });   // never blank what we couldn't read
+        shareHandle: W.x.shareHandle, kidFunWorth: !!W.x.kidFunWorth, kidLetterTitle: W.x.kidLetterTitle, kidLetter: W.x.kidLetter, kidNotes: W.x.kidNotes, kidsCanAddDocs: !!W.x.kidsCanAddDocs };
+      if (!first && !info.extras) ['shareHandle', 'kidFunWorth', 'kidLetterTitle', 'kidLetter', 'kidNotes', 'kidsCanAddDocs'].forEach(function (k) { delete data[k]; });   // never blank what we couldn't read
       show('<div class="splash"><div class="spin"></div><p>Saving your settings\u2026</p></div>');
       (first ? post('setupCollection', [data]) : post('saveSettings', [data, L.get('dadToken')])).then(function (r) {
         L.del('theme');

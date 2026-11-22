@@ -741,7 +741,7 @@
     }).join('');
     $('whoBadge').textContent = S.kid ? 'Kid mode' : (S.role ? 'Hi ' + S.role + (isSolo() ? '' : ' \u00B7 tap to switch') : THEME.tagline);
   }
-  var MORE_SCREENS = ['more', 'stats', 'posted', 'spares', 'history', 'export', 'help', 'settings', 'value', 'photos', 'novalue'];
+  var MORE_SCREENS = ['more', 'stats', 'posted', 'spares', 'history', 'export', 'help', 'settings', 'value', 'photos', 'novalue', 'dropZone'];
   function go(screen, params, noHistory) {
     if (!NAV.tourNav) closeTour(); if ($('lightbox')) $('lightbox').hidden = true;
     if (S.kid) { if (screen === 'item') screen = 'kidItem'; else if (KID_SCREENS.indexOf(screen) < 0) { screen = 'kid'; params = {}; } }
@@ -1312,7 +1312,7 @@
   var HELP = {
     home: ['This is your to-do board.', '\u201CDo I own it?\u201D at the top: type any name and it tells you straight away. Or tap \uD83D\uDCF7 Scan and point at a box\u2019s barcode.', 'Each box has one button that sorts that job out. Start with whichever has the biggest number.', 'No signal? The app shows the copy saved on the phone and syncs your changes later.'],
     collection: ['Everything you own, with the newest photo of each.', 'Type in the search box or use the three filters (range, status, condition).', 'Tap any picture to open it.'],
-    item: ['This is one item.', 'Tap \u201CAdd photo / video\u201D to use the camera - it saves straight into the item\u2019s own Drive folder.', 'Tap a photo to see it big, or make it the main photo. Videos play here in the app (Open in Drive is still there if you need it).', 'Tap \u201CEdit details\u201D to fix the name, category, condition and so on.', 'Tap a platform under \u201CPosted on\u201D once it\u2019s been posted.', '\uFF0B Add field (under \u201CYour own fields\u201D) adds your own details to every item: text, number, date, tick, private money, a photo, or a dated log like a Service log. Only ' + PRIV + ' can add or rename fields; anyone (not Kid mode) can fill them in. Removing a field only hides it - the sheet keeps the data.'],
+    item: ['This is one item.', 'Tap \u201CAdd photo / video\u201D to use the camera - it saves straight into the item\u2019s own Drive folder.', 'Documents (manuals, receipts, certificates) live under the photos. Receipts and valuations are owner-only.', 'Tap a photo to see it big, or make it the main photo. Videos play here in the app (Open in Drive is still there if you need it).', 'Tap \u201CEdit details\u201D to fix the name, category, condition and so on.', 'Tap a platform under \u201CPosted on\u201D once it\u2019s been posted.', '\uFF0B Add field (under \u201CYour own fields\u201D) adds your own details to every item: text, number, date, tick, private money, a photo, or a dated log like a Service log. Only ' + PRIV + ' can add or rename fields; anyone (not Kid mode) can fill them in. Removing a field only hides it - the sheet keeps the data.'],
     edit: ['Change anything, then tap Save.', 'Year is just the 4 numbers, like 1999. Anything else goes in Year note.', 'Nothing gets deleted from here - the worst that can happen is a typo you can fix.'],
     add: ['Four quick steps: photo, name, range, condition.', 'On the name step you can scan or type the barcode so it\u2019s saved with the new item.', 'If we find a match we\u2019ll fill the name, maker and range for you to check. A catalogue picture is a reference only — it is never saved as our photo.', 'Everything else is optional - you can add it later.', 'If it looks like you already have it, I\u2019ll ask before adding a second one.'],
     wanted: ['Things you\u2019re hunting for.', 'Got one? Tap \u201CGot it\u201D and it moves into the collection (I\u2019ll check first).'],
@@ -3275,7 +3275,8 @@ SCREENS.who = function () {
       // Drop Zone
       var dz = t.dropZone || { count: -1 };
       h += '<div class="card pinkL tile"><div class="head">\uD83D\uDCE5 Drop Zone</div><div class="big">' + (dz.count >= 0 ? dz.count : '?') + '</div><div class="hint">files waiting to be sorted into item folders</div>' +
-        '<a class="btn main" href="' + esc(dz.url || b.folders.dropZone) + '" target="_blank" rel="noopener">Open Drop Zone \u2197</a></div>';
+        '<a class="btn main" href="' + esc(dz.url || b.folders.dropZone) + '" target="_blank" rel="noopener">Open Drop Zone \u2197</a>' +
+        ((dz.count > 0 && !S.kid) ? '<button class="btn" style="margin-top:8px" data-act="go" data-to="dropZone">Sort documents into an item</button>' : '') + '</div>';
       // Wanted
       h += '<div class="card tile"><div class="head">\u2B50 Wanted</div><div class="big">' + t.wanted.count + '</div><div class="hint">things on the hunt list</div><div id="dealLine"></div><button class="btn main" data-act="go" data-to="wanted">See the wanted list</button></div>';
       // Checklist
@@ -3418,18 +3419,21 @@ SCREENS.who = function () {
         (shareable(it) || isPriv() ? '<div class="row">' + (shareable(it) ? '<button class="btn pink" style="flex:1" data-act="shareFind">\uD83D\uDCE4 Share this find</button>' : '') + (isPriv() ? '<button class="btn" style="flex:1" data-act="priceCheck">\uD83D\uDD0E Price check</button>' : '') + '</div><div id="priceSlot"></div>' : '') +
         (it.status === 'Wanted' || it.status === 'On order' ? '<button class="btn green full" data-act="gotItem">\u2705 Got it!</button>' : '') + '</div>' +
         '<h2>Photos</h2><div id="gallery" class="gallery"><div class="hint">' + (it.folderId ? 'Loading photos\u2026' : (standSrc ? 'Reference picture \u2014 still to film.' : 'No photos yet.')) + '</div></div>' +
+        '<h2>Documents</h2><div id="docBox" class="card"><div class="hint">Loading documents\u2026</div></div>' +
         (plats ? '<div class="card skyL"><h3>\uD83D\uDCE3 Posted on</h3><div class="chips">' + plats + '</div><p class="hint">Tap one to tick it off when it\u2019s been posted.</p></div>' : '') +
         '<div class="card"><dl class="facts">' + facts.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('') + '</dl></div>' +
         '<div id="cfBox">' + cfHtml(it) + '</div>' +
         (isPriv() && !it.offlineCopy ? '<div class="card"><button class="btn full" data-act="removeItem">Remove item</button><p class="hint">It comes off your collection and goes to Removed items. You can put it back any time. Photos stay in its folder.</p></div>' : '');
       setMain(h);
       setTimeout(cfLoadPhotos, 30);
+      paintDocuments([]);
       if (!it.folderId) {
         $('nudge').innerHTML = standSrc
           ? '<div class="nudge">This is a reference picture, not our photo. Tap \u201CTake photo\u201D when you film it and I\u2019ll make its folder too.</div>'
           : '<div class="nudge">\uD83D\uDCF7 No photos yet - tap \u201CTake photo\u201D and I\u2019ll make its folder too.</div>';
         return;
       }
+      call('getItemDocuments', it.key, it.name, S.role).then(paintDocuments).catch(function () { paintDocuments([]); });
       call('getItemPhotos', it.folderId).then(function (ph) {
         if (!$('hero') || !$('gallery')) return;   // moved on to another screen already
         S.gallery = ph;
@@ -3495,6 +3499,135 @@ SCREENS.who = function () {
       if (lb.hidden || !r || !r.src) return;
       var img = lb.querySelector('.lbImg img'); if (img) img.src = r.src; else if (lb.querySelector('.lbImg')) lb.querySelector('.lbImg').innerHTML = '<img alt="" src="' + r.src + '">';
     }).catch(function () { /* keep the small one */ });
+  }
+
+
+  function maxDocMb() { return THEME.maxDocMb || 20; }
+  function docLabels() { return (THEME.docLabels && THEME.docLabels.length) ? THEME.docLabels.slice() : ['Manual', 'Receipt', 'Certificate', 'Valuation', 'Other']; }
+  function isMoneyDocLabel(label) { return /^(Receipt|Valuation)$/i.test(label || ''); }
+  function canAddDocs() {
+    if (S.kid) return !!THEME.kidsCanAddDocs;
+    return !!S.role;
+  }
+  function addableDocLabels() {
+    var list = docLabels();
+    if (isPriv()) return list;
+    return list.filter(function (l) { return !isMoneyDocLabel(l); });
+  }
+  function paintDocuments(docs) {
+    var box = $('docBox'); if (!box) return;
+    S.docs = docs || [];
+    var rows = (docs || []).map(function (d) {
+      return '<div class="row" style="align-items:flex-start;margin-top:10px;gap:8px">' +
+        '<div style="flex:1;min-width:0"><a href="' + esc(d.url) + '" target="_blank" rel="noopener"><b>' + esc(d.label || 'Document') + '</b> \u2014 ' + esc(d.name) + '</a>' +
+        (d.date ? '<div class="hint">' + esc(d.date) + '</div>' : '') + '</div>' +
+        (isPriv() ? '<button class="btn small" data-act="removeDoc" data-id="' + esc(d.id) + '" data-name="' + esc(d.name) + '">Remove</button>' : '') +
+        '</div>';
+    }).join('');
+    var add = '';
+    if (canAddDocs()) {
+      add = '<button class="btn full" style="margin-top:12px" data-act="addDoc">Add a document</button>' +
+        '<p class="hint">A PDF manual, receipt, certificate or valuation, a Word file, or a photo of the document. Up to ' + maxDocMb() + ' MB. Receipts and valuations stay with ' + esc(PRIV) + '.</p>';
+    } else if (S.kid) {
+      add = '<p class="hint">Documents here are view only. Receipts and valuations stay with ' + esc(PRIV) + '.</p>';
+    }
+    box.innerHTML = (rows || '<p class="hint">No documents yet.</p>') + add;
+  }
+  function addDocumentUI() {
+    if (!S.current) return;
+    if (!canAddDocs()) { toast('Documents are view only here.'); return; }
+    var labels = addableDocLabels();
+    sheet('Add a document', '<p>Pick a label, then choose a PDF, a Word file or a photo of the document.</p>' +
+      '<label class="field" for="docLabel">Label</label><select id="docLabel">' + labels.map(function (l) { return '<option>' + esc(l) + '</option>'; }).join('') + '</select>',
+      [{ label: 'Choose file', value: 'ok', cls: 'main' }, { label: 'Cancel', value: '' }]).then(function (v) {
+        if (v !== 'ok') return;
+        var sel = $('docLabel');
+        S.docLabel = sel ? sel.value : 'Other';
+        var inp = $('docInput');
+        if (!inp) { toast('This copy of the app needs a quick update to add documents.'); return; }
+        inp.value = '';
+        inp.click();
+      });
+  }
+  function onDocFile(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    var it = S.current; if (!it) return;
+    var mb = file.size / 1048576, cap = maxDocMb();
+    if (mb > cap) { oops(new Error('That file is ' + (mb >= 10 ? Math.round(mb) : mb.toFixed(1)) + ' MB. Documents in the app can be up to ' + cap + ' MB. For a bigger one, pop it in the Drop Zone and sort it from Home.')); return; }
+    var okType = /pdf|msword|officedocument|opendocument|text\/plain|image\/(jpeg|jpg|png|webp|heic|heif)/i.test(file.type || '') ||
+      /\.(pdf|doc|docx|odt|txt|jpe?g|png|webp|heic|heif)$/i.test(file.name || '');
+    if (!okType) { oops(new Error('Please pick a PDF, a Word document, or a photo of the document.')); return; }
+    busy('Saving the document\u2026');
+    readRaw(file).then(function (pf) {
+      return call('uploadDocument', it.key, it.name, pf.mime || file.type || 'application/octet-stream', pf.b64, S.docLabel || 'Other', S.role);
+    }).then(function () {
+      done(); toast('Saved in the item folder.', 'good');
+      if (S.screen === 'item') go('item', { key: it.key }, true);
+    }).catch(oops);
+  }
+  function removeDocumentUI(id, name) {
+    if (!isPriv() || !S.current || !id) return;
+    confirmSheet('Remove this document?', 'It comes off the item and goes to the Removed documents folder (next to the sheet). Nothing is binned. You can move it back from Google Drive if you need it.', 'Remove it', 'Keep it').then(function (ok) {
+      if (!ok) return;
+      busy('Moving it\u2026');
+      return call('removeDocument', S.current.key, S.current.name, id, S.role).then(function () {
+        done(); toast((name ? name + ' is' : 'It is') + ' in Removed documents.', 'good');
+        if (S.screen === 'item') go('item', { key: S.current.key }, true);
+      });
+    }).catch(oops);
+  }
+  SCREENS.dropZone = function () {
+    if (S.kid) { go('home'); return; }
+    busy('Looking in the Drop Zone\u2026');
+    Promise.all([loadBoot().catch(function () { return S.boot; }), call('listDropZoneDocuments', S.role)]).then(function (res) {
+      done();
+      var docs = res[1] || [];
+      var items = ((S.boot && S.boot.items) || S.items || []).filter(function (it) { return it && it.name; });
+      var opts = items.map(function (it) { return '<option value="' + esc(it.key || it.id) + '">' + esc(it.name) + '</option>'; }).join('');
+      var labels = addableDocLabels();
+      var rows = docs.map(function (d) {
+        var lab = labels.map(function (l) { return '<option' + (l === d.label ? ' selected' : '') + '>' + esc(l) + '</option>'; }).join('');
+        var guessed = d.guessKey ? ' selected' : '';
+        var itemOpts = '<option value="">Choose an item</option>' + items.map(function (it) {
+          var k = it.key || it.id;
+          return '<option value="' + esc(k) + '"' + (k === d.guessKey ? ' selected' : '') + '>' + esc(it.name) + '</option>';
+        }).join('');
+        return '<div class="card" data-drop="' + esc(d.id) + '"><p><b>' + esc(d.name) + '</b></p>' +
+          (d.date ? '<p class="hint">' + esc(d.date) + (d.guessName ? ' \u00B7 looks like ' + esc(d.guessName) : '') + '</p>' : (d.guessName ? '<p class="hint">Looks like ' + esc(d.guessName) + '</p>' : '')) +
+          '<label class="field">Item</label><select data-drop-item>' + itemOpts + '</select>' +
+          '<label class="field">Label</label><select data-drop-label>' + lab + '</select>' +
+          '<button class="btn main full" style="margin-top:10px" data-act="assignDropDoc" data-id="' + esc(d.id) + '" data-name="' + esc(d.name) + '">Add to that item</button>' +
+          (d.url ? '<a class="btn full" href="' + esc(d.url) + '" target="_blank" rel="noopener">Open in Drive \u2197</a>' : '') +
+          '</div>';
+      }).join('');
+      setMain(backBtn() + '<h1>Drop Zone documents</h1><p class="hint">PDFs and other documents waiting in the Drop Zone. Pick the item and a label to file one. Photos can still be opened in Drive.</p>' +
+        (rows || '<div class="card"><p class="hint">No documents waiting. Open the Drop Zone to add a PDF, then come back.</p></div>'));
+    }).catch(oops);
+  };
+  function assignDropDocUI(el) {
+    var id = el.getAttribute('data-id');
+    var card = el.closest ? el.closest('[data-drop]') : null;
+    if (!card && el.parentNode) {
+      var n = el.parentNode;
+      while (n && !(n.getAttribute && n.getAttribute('data-drop'))) n = n.parentNode;
+      card = n;
+    }
+    if (!id || !card) return;
+    var itemSel = card.querySelector('[data-drop-item]');
+    var labSel = card.querySelector('[data-drop-label]');
+    var key = itemSel && itemSel.value;
+    var label = labSel && labSel.value;
+    if (!key) { toast('Pick which item it belongs to.'); return; }
+    var items = ((S.boot && S.boot.items) || S.items || []);
+    var it = items.filter(function (x) { return (x.key || x.id) === key; })[0];
+    if (!it) { toast('I couldn\u2019t find that item.'); return; }
+    busy('Filing it\u2026');
+    call('assignDropZoneDocument', id, it.key || it.id, it.name, label || 'Other', S.role).then(function () {
+      done(); toast('Filed with ' + it.name + '.', 'good');
+      go('dropZone', {}, true);
+    }).catch(oops);
   }
 
   function selectHtml(id, list, val) {
@@ -4098,6 +4231,7 @@ SCREENS.who = function () {
   var FAQ = [
     ['\u2795 Adding, editing and removing', ['Tap <b>Add</b> at the bottom to add something new.', 'Take a photo (front first), type a name, pick the category, then the condition. That\u2019s it.', 'Open any item and tap <b>Edit details</b> to change it.', 'Tap <b>Remove item</b> to take it off the collection. It goes to <b>Removed items</b> (under More or Settings) and you can put it back. Photos stay in its folder.', 'Everything else (year, maker, packaging, price) is optional under \u201CMore details\u201D.', 'If it looks like you already have it, I\u2019ll ask before adding a second one.']],
     ['\uD83D\uDCF8 Photos', ['Open any item and tap <b>Add photo / video</b>. It saves straight into that item\u2019s own Drive folder. Videos play in the app when you tap them; Open in Drive is still there as a fallback.', 'Tap <b>New main photo</b> to replace the picture that shows in the lists. The old one stays in the folder - nothing is deleted.', 'Tap any photo to see it big, then <b>Make main photo</b> to pick a different main one.', 'No faces in shot, please. Hands are fine.']],
+    ['\uD83D\uDCC4 Documents', ['Each item has a <b>Documents</b> section for manuals, receipts, certificates, valuations or other files (PDF, Word, or a photo of the document), up to 20 MB.', 'They are saved in that item\u2019s Drive folder as <b>Item - Manual.pdf</b> (or Receipt, Certificate, and so on). Tap one to open it in Drive.', 'Receipts and valuations are owner-only and need the PIN. Kid mode can view the others, and can add manuals only if you switch that on in Settings.', 'Remove a document and it goes to the <b>Removed documents</b> folder next to the sheet - nothing is binned. A PDF dropped in the Drop Zone can be sorted onto the right item from Home.']],
     ['\uD83E\uDD14 Do I own it? + barcode scan', ['Type any name in <b>Do I own it?</b> on Home - it tells you yes, maybe or no as you type, even with spelling mistakes.', 'Tap <b>\uD83D\uDCF7 Scan</b> and point the camera at a box\u2019s barcode. If the barcode is saved on an item it matches straight away.', 'First time for a barcode? Search the name and tap the item to save the barcode on it. Or open any item and tap <b>Save barcode</b>.']],
     ['\uD83D\uDCF4 No signal', ['The last collection you opened is kept on the phone, with photos you\u2019ve already seen.', 'Adds, edits, ticks and photos made with no signal are kept on the phone and sync on their own when you\u2019re back online.']],
     ['\uD83E\uDDD2 ' + KID_ROLE + '\u2019s mode', ['Big buttons and photos, no prices. Tick off finds on the hunt list and add photos.', 'If ' + OWN + ' has written a <b>letter</b> in Settings, it pops up every so often and lives on a Home tile.', 'The <b>\u2B50 My points</b> page awards points for photos (once ' + OWN + ' says yes), ticks, new finds and jobs, with levels and real rewards ' + OWN + ' sets. Secret or hidden things never earn points, and there is never any money.', 'The <b>\uD83C\uDFC6 Badges</b> wall unlocks badges from the collection (10 in one category, first rare find, finds this month, photos added\u2026) with confetti for each new one. No money badges, and secret or Christmas things never count.', 'Getting back to the full app needs ' + esc(THEME.privateRole) + '\u2019s PIN.'], 'kidOnly'],
@@ -4129,7 +4263,7 @@ SCREENS.who = function () {
     { screen: 'home', sel: '.tiles .tile', t: 'Your to-do board', b: 'Each box is one job (photos to take, values to add, the Drop Zone) with one button to sort it.' },
     { screen: 'collection', sel: '#colSearch', t: 'Collection', b: 'Everything you own with photos. Search, filter by category, condition, status or posted, and sort newest, A to Z or by year.' },
     { screen: 'collection', sel: '.grid .card, .grid > *', t: 'Open an item', b: 'Tap any picture to see the item, its photos, history and details.' },
-    { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '[data-act=snapCurrent]', t: 'An item', b: 'Add photos or a video with the camera, pick the main photo, edit details, save a barcode, tick where it\u2019s been posted, share a find card, or price-check it. Remove item moves it to Removed items, where you can put it back; photos stay in its folder.' },
+    { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '[data-act=snapCurrent]', t: 'An item', b: 'Add photos or a video with the camera, pick the main photo, edit details, save a barcode, tick where it\u2019s been posted, share a find card, or price-check it. Documents holds manuals, receipts and certificates as PDFs in the same folder. Remove item moves it to Removed items, where you can put it back; photos and documents stay in its folder.' },
     { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '#cfBox .cfCard', t: 'Your own fields', b: 'Tap \uFF0B Add field to add details that suit your collection: text, a number, a date, a tick, a private money value, a photo, or a dated log (date, note, cost, photos) like a Service log or Repairs. Rename or remove them under Edit fields; nothing is ever deleted.' },
     { screen: 'add', sel: '#main .card, #main', t: 'Add something new', b: 'Snap it, name it (or scan its barcode to fill the name in), pick the category and condition. Done: it gets its own photo folder.' },
     { screen: 'wanted', sel: '#wantSearch', t: 'Wanted', b: 'Your hunt list, grouped by category. Search it as you type. Items still missing from your checklists show up here too.' },
@@ -5025,6 +5159,9 @@ SCREENS.who = function () {
       case 'findCheapest': findCheapest(+el.getAttribute('data-i')); break;
       case 'edit': go('edit', {}); break;
       case 'removeItem': removeItemUI(); break;
+      case 'addDoc': addDocumentUI(); break;
+      case 'removeDoc': removeDocumentUI(el.getAttribute('data-id'), el.getAttribute('data-name')); break;
+      case 'assignDropDoc': assignDropDocUI(el); break;
       case 'restoreItem': restoreItemUI(el.getAttribute('data-key'), el.getAttribute('data-name')); break;
       case 'cfAdd': cfAdd(); break;
       case 'cfEdit': cfEdit(+el.getAttribute('data-i')); break;
@@ -5137,6 +5274,7 @@ SCREENS.who = function () {
   $('camInput').addEventListener('change', onFiles);
   $('pickInput').addEventListener('change', onFiles);
   if ($('vidInput')) $('vidInput').addEventListener('change', onFiles);
+  if ($('docInput')) $('docInput').addEventListener('change', onDocFile);
   $('sheet').addEventListener('click', function (e) { if (e.target === $('sheet')) { /* tap outside: ignore so nothing is chosen by accident */ } });
 
   /* ---------------- start ---------------- */
