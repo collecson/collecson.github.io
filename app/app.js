@@ -1361,8 +1361,13 @@
   var KID_ROLE = (function () { var k = (THEME.people || []).filter(function (p) { return p.role === 'Kid'; })[0]; return k ? k.name : 'Kid'; })();
   function roleKind(name) { var p = (THEME.people || []).filter(function (x) { return x.name === name; })[0]; return p ? p.role : (name === PRIV ? 'Owner' : 'Family'); }
   function isSolo() { return (THEME.roles || []).length <= 1; }
+  function hasKid() { return !!(THEME.hasKid || (THEME.people || []).some(function (p) { return p.role === 'Kid'; })); }
+  function kidsAddonOn() { return THEME.kidsAddon !== false; }
+  /* Kid surfaces only when a Kid person exists (and the Family add-on flag is on; default on, not payment-locked yet). */
+  function showKidFeatures() { return kidsAddonOn() && hasKid(); }
   var KID_SCREENS = ['kid', 'kidStuff', 'kidItem', 'kidHunt', 'kidBadges', 'kidRewards', 'kidNotes', 'pin', 'add'];
   function enterKid() {
+    if (!showKidFeatures()) { toast('Add a kid under Settings first, then Kid mode and rewards will show up.'); return; }
     LS.set('kidPrevRole', S.role || '');
     clearDadToken();                    // money needs the PIN again after Kid mode
     S.kid = true; LS.set('kidMode', '1');
@@ -2684,7 +2689,7 @@
   };
 
   SCREENS.rewards = function () {
-    if (!isPriv()) { go('home', {}, true); return; }
+    if (!isPriv() || !showKidFeatures()) { go('home', {}, true); return; }
     busy('Getting the rewards\u2026');
     loadRewards(true).then(function (r) {
       done();
@@ -3230,7 +3235,7 @@ SCREENS.who = function () {
     if (isSolo() && PRIV) { if (THEME.needsPin && !dadUnlocked()) askDadPin(PRIV); else enterRole(PRIV); return; }
     setMain('<div class="card skyL center"><h1>Who\u2019s using it?</h1><p>Tap your name. You can switch any time from the top.</p><div class="stack">' +
       THEME.roles.map(function (r) { return '<button class="btn ' + (r === PRIV ? 'yel' : 'pink') + ' full" style="min-height:72px;font-size:22px" data-act="pickRole" data-role="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') +
-      '<button class="btn full" data-act="kidEnter">\uD83E\uDDD2 Kid mode - big buttons, no prices</button>' +
+      (showKidFeatures() ? '<button class="btn full" data-act="kidEnter">\uD83E\uDDD2 Kid mode - big buttons, no prices</button>' : '') +
       '</div></div>');
   };
 
@@ -3259,7 +3264,7 @@ SCREENS.who = function () {
           '<button class="btn small" data-act="go" data-to="photos">See all ' + t.photos.count + '</button>';
       } else h += '<div class="hint">All done - every item has photos. \uD83C\uDF89</div>';
       h += '</div>';
-      if (isPriv()) h += '<div class="card pinkL tile" id="rwHomeTile"><div class="head">\u2B50 ' + esc(KID_ROLE) + '\u2019s rewards</div><div class="hint">Points, photo approvals and rewards.</div><button class="btn main" data-act="go" data-to="rewards">Open</button></div>';
+      if (isPriv() && showKidFeatures()) h += '<div class="card pinkL tile" id="rwHomeTile"><div class="head">\u2B50 ' + esc(KID_ROLE) + '\u2019s rewards</div><div class="hint">Points, photo approvals and rewards.</div><button class="btn main" data-act="go" data-to="rewards">Open</button></div>';
       // No value
       h += '<div class="card skyL tile"><div class="head">\uD83D\uDCB7 No value yet</div><div class="big">' + t.noValue.count + '</div>';
       if (isPriv() && t.noValue.next) h += '<div class="hint">Next: <b>' + esc(t.noValue.next.name) + '</b></div><button class="btn main" data-act="valueFor" data-key="' + esc(t.noValue.next.key) + '">Add a value</button>' +
@@ -3283,7 +3288,7 @@ SCREENS.who = function () {
       // Add
       h += '<div class="card pink tile"><div class="head">\u2795 Got something new?</div><div class="hint">Snap it, name it, done. It goes straight into the sheet with its own folder.</div><button class="btn main" data-act="go" data-to="add">Add an item</button></div>';
       h += '</div>';
-      h += '<button class="btn pink full" style="margin-top:12px" data-act="kidEnter">\uD83E\uDDD2 ' + esc(KID_ROLE) + '\u2019s mode (big buttons, no prices)</button>';
+      if (showKidFeatures()) h += '<button class="btn pink full" style="margin-top:12px" data-act="kidEnter">\uD83E\uDDD2 ' + esc(KID_ROLE) + '\u2019s mode (big buttons, no prices)</button>';
       h += '<div class="row" style="margin-top:6px"><button class="btn small" data-act="refresh">\u21BB Refresh</button><button class="btn small" data-act="go" data-to="stats">\uD83D\uDCCA Stats</button><button class="btn small" data-act="go" data-to="checklists">\u2705 Checklists</button><button class="btn small" data-act="go" data-to="help">\u2753 Help</button></div>';
       setMain(h);
       if (LS.get('tourPending')) { LS.set('tourPending', ''); setTimeout(function () { startTour(0); }, 350); }
@@ -3296,7 +3301,7 @@ SCREENS.who = function () {
         call('getValueSummary', S.role).then(function (vs) {
           if (vs && typeof vs.total === 'number' && $('valueBox') && S.screen === 'home') $('valueBox').innerHTML = valueCardHtml(vs);
         }).catch(noop);
-        loadRewards(true).then(paintRewardsHome).catch(noop);
+        if (showKidFeatures()) loadRewards(true).then(paintRewardsHome).catch(noop);
       }
     }).catch(oops);
   };
@@ -4048,7 +4053,7 @@ SCREENS.who = function () {
     setMain(backBtn() + '<h1>Settings</h1><div class="card stack">' +
       (isSolo() ? '<p>Signed in as <b>' + esc(S.role) + '</b> (just you).</p>' + (THEME.generic && isPriv() ? '<a class="btn green full" href="?settings=1&step=4">\uD83D\uDC6A Add family or a kid (optional)</a>' : '') :
         '<p>Using it as: <b>' + esc(S.role) + '</b></p><button class="btn full" data-act="go" data-to="who">Switch user</button>' + (THEME.generic && isPriv() ? '<a class="btn full" href="?settings=1&step=4">\uD83D\uDC6A People: add or change</a>' : '')) +
-      '<button class="btn pink full" data-act="kidEnter">\uD83E\uDDD2 Kid mode</button><p class="hint">Big buttons, photos, points and badges for a child. Never any prices. Getting out needs your PIN.</p>' +
+      (showKidFeatures() ? '<button class="btn pink full" data-act="kidEnter">\uD83E\uDDD2 Kid mode</button><p class="hint">Big buttons, photos, points and badges for a child. Never any prices. Getting out needs your PIN.</p>' : (isSolo() && THEME.generic && isPriv() ? '<p class="hint">Kid mode, points and rewards stay hidden until you add a kid.</p>' : '')) +
       '<p class="hint">\uD83D\uDCF4 Works offline: the last collection you opened is kept on this phone. Changes made with no signal sync automatically.' + (NET.queueLen ? ' <b>' + NET.queueLen + ' waiting.</b>' : '') + '</p>' +
       (THEME.needsPin && isPriv() ? '<button class="btn full" data-act="lockPriv">\uD83D\uDD12 Lock ' + esc(PRIV) + ' view</button>' : '') +
       (THEME.generic && isPriv() ? '<a class="btn yel full" href="?settings=1">\u2699\uFE0F Change name, type, colours, people</a>' : '') +
@@ -4074,8 +4079,10 @@ SCREENS.who = function () {
       ['photos', '\uD83D\uDCF8', 'Photos to take', 'Items still needing our own photos']
     ];
     if (isPriv()) {
-      tiles.push(['rewards', '\u2B50', KID_ROLE + '\u2019s rewards', 'Points, photo approvals, activity log']);
-      tiles.push(['badgeEdit', '\uD83C\uDFC6', KID_ROLE + '\u2019s badges', 'Add badges, change tiers, mark earned']);
+      if (showKidFeatures()) {
+        tiles.push(['rewards', '\u2B50', KID_ROLE + '\u2019s rewards', 'Points, photo approvals, activity log']);
+        tiles.push(['badgeEdit', '\uD83C\uDFC6', KID_ROLE + '\u2019s badges', 'Add badges, change tiers, mark earned']);
+      }
       tiles.push(['value', '\uD83D\uDCB7', 'Value', 'Private: totals, top 10, paid vs value']);
     }
     if (isPriv()) tiles.push(['removed', '\uD83D\uDDD1\uFE0F', 'Removed items', 'Things you took out, ready to put back']);
@@ -4093,7 +4100,7 @@ SCREENS.who = function () {
     ['\uD83D\uDCF8 Photos', ['Open any item and tap <b>Add photo / video</b>. It saves straight into that item\u2019s own Drive folder. Videos play in the app when you tap them; Open in Drive is still there as a fallback.', 'Tap <b>New main photo</b> to replace the picture that shows in the lists. The old one stays in the folder - nothing is deleted.', 'Tap any photo to see it big, then <b>Make main photo</b> to pick a different main one.', 'No faces in shot, please. Hands are fine.']],
     ['\uD83E\uDD14 Do I own it? + barcode scan', ['Type any name in <b>Do I own it?</b> on Home - it tells you yes, maybe or no as you type, even with spelling mistakes.', 'Tap <b>\uD83D\uDCF7 Scan</b> and point the camera at a box\u2019s barcode. If the barcode is saved on an item it matches straight away.', 'First time for a barcode? Search the name and tap the item to save the barcode on it. Or open any item and tap <b>Save barcode</b>.']],
     ['\uD83D\uDCF4 No signal', ['The last collection you opened is kept on the phone, with photos you\u2019ve already seen.', 'Adds, edits, ticks and photos made with no signal are kept on the phone and sync on their own when you\u2019re back online.']],
-    ['\uD83E\uDDD2 ' + KID_ROLE + '\u2019s mode', ['Big buttons and photos, no prices. Tick off finds on the hunt list and add photos.', 'If ' + OWN + ' has written a <b>letter</b> in Settings, it pops up every so often and lives on a Home tile.', 'The <b>\u2B50 My points</b> page awards points for photos (once ' + OWN + ' says yes), ticks, new finds and jobs, with levels and real rewards ' + OWN + ' sets. Secret or hidden things never earn points, and there is never any money.', 'The <b>\uD83C\uDFC6 Badges</b> wall unlocks badges from the collection (10 in one category, first rare find, finds this month, photos added\u2026) with confetti for each new one. No money badges, and secret or Christmas things never count.', 'Getting back to the full app needs ' + esc(THEME.privateRole) + '\u2019s PIN.']],
+    ['\uD83E\uDDD2 ' + KID_ROLE + '\u2019s mode', ['Big buttons and photos, no prices. Tick off finds on the hunt list and add photos.', 'If ' + OWN + ' has written a <b>letter</b> in Settings, it pops up every so often and lives on a Home tile.', 'The <b>\u2B50 My points</b> page awards points for photos (once ' + OWN + ' says yes), ticks, new finds and jobs, with levels and real rewards ' + OWN + ' sets. Secret or hidden things never earn points, and there is never any money.', 'The <b>\uD83C\uDFC6 Badges</b> wall unlocks badges from the collection (10 in one category, first rare find, finds this month, photos added\u2026) with confetti for each new one. No money badges, and secret or Christmas things never count.', 'Getting back to the full app needs ' + esc(THEME.privateRole) + '\u2019s PIN.'], 'kidOnly'],
     ['\uD83D\uDD0D Finding things', ['Use the search box on Home or in Collection. It searches names, characters, lines and IDs.', 'Tap <b>Filters</b> to narrow down by category, line, condition, status, posted or photos.', 'Use the sort menu for newest first, A to Z or by year.']],
     ['\u2B50 Wanted and missing', ['<b>Wanted</b> is your hunt list. Tap <b>Got it</b> when one arrives and it moves into the collection.', '<b>Missing list</b> (under More) shows everything still needed from every full-set checklist in one place.', '<b>Checklists</b> shows how close each set is.']],
     ['\uD83D\uDCE3 Posted on socials', ['Each item page has the platforms as buttons. Tap one to tick it once it\u2019s posted.', 'Under More \u2192 <b>Posted on socials</b> you can see what hasn\u2019t been posted yet - handy for planning.']],
@@ -4109,7 +4116,7 @@ SCREENS.who = function () {
   SCREENS.help = function () {
     setMain(backBtn() + '<h1>\u2753 Help</h1><div class="card yel center"><div class="mascot small">' + THEME.mascotSvg.replace(/fsBite/g, 'fsBiteH') + '</div><p><b>New here?</b> Take the 2-minute walkthrough. It visits every screen.</p>' +
       '<div class="stack"><button class="btn main full" data-act="startTour">\uD83E\uDDED Take the tour</button><button class="btn full" data-act="go" data-to="guide">Show the welcome cards</button></div></div>' +
-      FAQ.map(function (f, i) { return '<details class="card faq"' + (i === 0 ? ' open' : '') + '><summary>' + f[0] + '</summary><ul>' + f[1].filter(Boolean).map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul></details>'; }).join('') +
+      FAQ.filter(function (f) { return f[2] !== 'kidOnly' || showKidFeatures(); }).map(function (f, i) { return '<details class="card faq"' + (i === 0 ? ' open' : '') + '><summary>' + f[0] + '</summary><ul>' + f[1].filter(Boolean).map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul></details>'; }).join('') +
       '<p class="hint center">' + esc(THEME.appName) + ' \u00B7 version ' + esc(THEME.version || '') + '</p>');
   };
 
@@ -4133,7 +4140,7 @@ SCREENS.who = function () {
     { screen: 'spares', sel: '#main h1', t: 'Spares and duplicates', b: 'Anything you own more than once, plus near-matches. Mark the spare for sale; nothing is deleted.' },
     { screen: 'history', sel: '#main h1', t: 'Item history', b: 'A month-by-month timeline of when things joined and where from.' },
     { screen: 'export', sel: '#main h1', t: 'Export', b: 'Save the collection (or what you filtered) to Drive as a spreadsheet file or a PDF.' },
-    { screen: 'settings', sel: '[data-act=kidEnter]', t: 'Kid mode', b: 'Hand the phone to a child: big buttons, photos, points, badges and jobs, never any prices. Getting out needs your PIN.' },
+    { screen: 'settings', sel: '[data-act=kidEnter]', need: showKidFeatures, t: 'Kid mode', b: 'Hand the phone to a child: big buttons, photos, points, badges and jobs, never any prices. Getting out needs your PIN.' },
     { screen: 'settings', sel: '[data-act=startTour]', t: 'Settings', b: 'Lock your money view, add family or a kid, change the name, type and colours, open Removed items, clear example items, or run this walkthrough again.' },
     { screen: 'home', sel: '#stuckBtn', t: 'I\u2019m stuck', b: 'On every screen. It explains that screen, refreshes, or opens Help.' },
     { screen: 'home', sel: null, t: 'You\u2019re all set! \uD83C\uDF89', b: 'The app never deletes anything, so tap around and explore. Help is under More any time.' }
@@ -4816,7 +4823,7 @@ SCREENS.who = function () {
       '</div>';
   }
   SCREENS.badgeEdit = function () {
-    if (!isPriv()) { go('home', {}, true); return; }
+    if (!isPriv() || !showKidFeatures()) { go('home', {}, true); return; }
     busy('Loading badges\u2026');
     Promise.all([loadBoot().catch(function () { return null; }), loadRewards().catch(function () { return null; })]).then(function (res) {
       done();
@@ -5135,6 +5142,7 @@ SCREENS.who = function () {
   /* ---------------- start ---------------- */
   loadSavedThumbs();
   IDB.qAll().then(function (q) { NET.queueLen = q.length; renderNetBar(); if (q.length && navigator.onLine !== false) syncQueue(); }, noop);
+  if (S.kid && !showKidFeatures()) { S.kid = false; LS.del('kidMode'); }
   if (S.kid) { S.role = KID_ROLE; S.kidGreeting = true; pickFunUnitRandom(); pickJokeOnOpen(); go('kid', {}, true); }
   else if (!LS.get('seenGuide')) go('guide', { i: 0 }, true);
   else if (!S.role || (isSolo() && S.role !== PRIV)) go('who', {}, true);
