@@ -361,3 +361,81 @@ footer .brand img{width:44px;height:44px}
 .cta{background:radial-gradient(60% 90% at 90% 0%,rgba(227,23,58,.55),transparent 70%),radial-gradient(50% 80% at 0% 100%,rgba(77,124,254,.5),transparent 70%),linear-gradient(150deg,#2A1650,#1B1F3B)}
 .fields-band{background:radial-gradient(60% 80% at 90% 10%,rgba(227,23,58,.45),transparent 70%),linear-gradient(150deg,#2A1650,#1B1F3B)}
 .brand img{box-shadow:0 3px 0 rgba(27,31,59,.25)}
+/* Pricing, setup filmstrips, Family badges, draft-price marker (v2 site). */
+
+/* nav: Pricing sits with the other links; Coming soon still pops */
+.links a.soon{margin-left:6px}
+
+/* draft prices — only rendered when PREVIEW is on */
+.draft-flag{display:inline-flex;align-items:center;gap:8px;background:var(--butter);color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:5px 12px;font:900 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;box-shadow:0 3px 0 var(--ink)}
+.price-block{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.price-block .price{font:800 clamp(44px,6vw,72px)/.9 var(--disp);letter-spacing:-.03em}
+.price-block .each{font-weight:800;color:var(--ink2)}
+
+/* pricing cards */
+.tiers{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:stretch}
+.tier{position:relative;background:#fff;border:3px solid var(--ink);border-radius:28px;padding:32px 28px 28px;box-shadow:0 8px 0 var(--ink);display:flex;flex-direction:column}
+.tier.featured{background:linear-gradient(180deg,#FFF7EE 0%,#FFE1E2 100%);box-shadow:0 10px 0 var(--red)}
+.tier .who{font:800 13px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--hot);margin:0 0 8px}
+.tier h3{font-size:clamp(28px,3vw,36px);margin-bottom:8px}
+.tier .lede{margin-bottom:18px}
+.tier .ticks{flex:1;margin:8px 0 22px}
+.tier .actions{margin-top:auto}
+.family-badge,.tier-tag{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:999px;padding:4px 10px;font:900 11px/1 var(--body);letter-spacing:.1em;text-transform:uppercase}
+.tier-tag{background:var(--grad);border:2px solid var(--ink);color:#fff;box-shadow:0 2px 0 var(--ink)}
+.upgrade{margin-top:22px;background:var(--mint2);border:2.5px solid var(--ink);border-radius:22px;padding:20px 22px}
+.upgrade p{margin:0;color:var(--ink)}
+.fineprint{color:var(--ink2);font-size:15px;max-width:44em}
+@media(max-width:800px){.tiers{grid-template-columns:1fr}}
+
+/* home pricing teaser */
+.teaser-tiers{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.teaser{background:#fff;border:2.5px solid var(--ink);border-radius:22px;padding:22px 22px 20px;text-decoration:none;box-shadow:0 6px 0 var(--ink);transition:transform .15s,box-shadow .15s;color:inherit}
+.teaser:hover{transform:translateY(-3px);box-shadow:0 9px 0 var(--ink)}
+.teaser .who{font:800 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--hot);margin:0 0 6px}
+.teaser h3{margin:0 0 6px}
+.teaser .price{font:800 34px/1 var(--disp)}
+.teaser p{margin:8px 0 0;color:var(--ink2);font-size:16px}
+@media(max-width:700px){.teaser-tiers{grid-template-columns:1fr}}
+
+/* home "up and running" strip */
+.setup-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.setup-strip article{background:#fff;border:2.5px solid var(--ink);border-radius:20px;padding:20px 18px}
+.setup-strip h3{font-size:22px;margin:0 0 6px}
+.setup-strip p{margin:0;color:var(--ink2);font-size:15px}
+.setup-strip .n{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--butter);border:2.5px solid var(--ink);font:800 20px/1 var(--disp);margin-bottom:10px}
+@media(max-width:900px){.setup-strip{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.setup-strip{grid-template-columns:1fr}}
+
+/* setup page toc + long steps */
+.setup-toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
+.setup-toc a{text-decoration:none;font-weight:800;font-size:14px;padding:8px 14px;border:2px solid var(--ink);border-radius:999px;background:#fff}
+.setup-toc a:hover,.setup-toc a:focus-visible{background:var(--paper2)}
+.setup-block{scroll-margin-top:92px;padding:36px 0;border-top:2px dashed rgba(27,31,59,.18)}
+.setup-block:first-of-type{border-top:0;padding-top:0}
+.setup-block .shot-row{margin-top:22px}
+
+/* captioned phone filmstrip */
+.shot-row{display:flex;gap:18px;overflow-x:auto;padding:8px 4px 18px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.shot-row figure{flex:0 0 min(220px,70vw);margin:0;scroll-snap-align:start}
+.shot-row figcaption,.shot-grid figcaption{font-weight:800;font-size:14px;line-height:1.35;margin-top:10px;color:var(--ink)}
+.shot-row figcaption small,.shot-grid figcaption small{display:block;font-weight:700;color:var(--ink2);font-size:13px;margin-top:2px}
+.shot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px 18px;align-items:start}
+.shot-grid figure{margin:0}
+.shot-grid .phone{width:100%;max-width:260px;margin-inline:auto}
+@media(max-width:900px){.shot-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.shot-grid{grid-template-columns:1fr;justify-items:center}.shot-grid .phone{max-width:240px}}
+
+/* honest callout */
+.callout{background:#fff;border:2.5px solid var(--ink);border-radius:22px;padding:22px 24px;box-shadow:0 5px 0 var(--ink)}
+.callout p{margin:0;color:var(--ink2)}
+.callout b{color:var(--ink)}
+
+@media(max-width:1000px){
+  .links a{padding:9px 10px;font-size:14px}
+}
+
+@media(max-width:700px){
+  .setup-toc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .setup-toc a{text-align:center;justify-content:center}
+}
