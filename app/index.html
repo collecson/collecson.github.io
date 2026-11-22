@@ -1046,6 +1046,9 @@
 #ckBoot .mono{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all}
 #ckBoot .nav{display:flex;gap:10px;margin-top:16px}#ckBoot .nav .btn{flex:1}
 #ckBoot textarea{min-height:170px}
+#ckBoot .types{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:4px 0 10px}
+#ckBoot .types button{border:3px solid var(--ink);border-radius:14px;padding:10px 8px;background:#fff;font:inherit;font-weight:800;color:var(--ink);cursor:pointer}
+#ckBoot .types button.sel{background:var(--yel,#FFD23F);outline:3px solid var(--ink);outline-offset:1px}
   </style>
 </head>
 <body>
@@ -1122,7 +1125,7 @@
 (function () {
   'use strict';
   var PFX = 'ck_'; window.LS_PREFIX = PFX;
-  var VER = 'cs9-20261122d';
+  var VER = 'cs93-20261122a';
   var L = {
     get: function (k) { try { return localStorage.getItem(PFX + k) || ''; } catch (e) { return ''; } },
     set: function (k, v) { try { localStorage.setItem(PFX + k, v); } catch (e) { /* full or private */ } },
@@ -1303,6 +1306,7 @@
   function runWizard(t, info, first) {
     var W = {
       step: first ? 0 : 1, name: info.name || '', tagline: info.tagline || '', palette: info.palette || 'collecson', accent: info.accent || '',
+      type: info.type || '', types: info.types || [],
       currency: info.currency || '\u00A3', categories: (info.categories || []).join('\n'),
       users: info.users && info.users.length ? info.users.map(function (u) { return { name: u.name, role: u.role }; }) : [{ name: '', role: 'Owner' }],
       pin: '', pin2: '', logo: null, bg: null, removeLogo: false, removeBg: false, err: '', showPeople: false,
@@ -1315,7 +1319,18 @@
     var existingBg = '';
     if (!first && t.bgId) loadBg(t).then(function (d) { existingBg = d; if (W.step === 2) render(); });
     var PALS = info.palettes || [];
+    var TYPES = W.types.length ? W.types : [];
     function pal() { for (var i = 0; i < PALS.length; i++) if (PALS[i].key === W.palette) return PALS[i]; return PALS[0] || {}; }
+    function typ(k) { for (var i = 0; i < TYPES.length; i++) if (TYPES[i].key === k) return TYPES[i]; return null; }
+    function typCats(k) { var x = typ(k); return (x && x.categories) ? x.categories.slice() : []; }
+    function catsText(arr) { return (arr || []).join('\n'); }
+    function applyTypeCats(next) {
+      var cur = (W.categories || '').replace(/\r/g, '').trim();
+      var prev = catsText(typCats(W.type)).trim();
+      var orig = (info.categories || []).join('\n').trim();
+      if (!cur || cur === prev || cur === orig) W.categories = catsText(typCats(next));
+      W.type = next;
+    }
     function preview() {
       setVars(palColours(pal(), W.accent));
       var bg = W.removeBg ? '' : (W.bg ? W.bg.preview : existingBg); setBg(root, bg);
@@ -1335,6 +1350,8 @@
           '<p class="hint">You can change all of it later.</p><button class="btn main full" data-w="next">Let\u2019s go \u2192</button></div>';
       } else if (W.step === 1) {
         h = '<h1>' + (first ? '1. Name it' : 'Name') + '</h1>' + stepsBar() + e + '<div class="card">' +
+          '<label>What do you collect?</label><p class="hint">A couple of example items will match this, so you can see how the app works. You can change it later.</p><div class="types">' +
+          TYPES.map(function (tp) { return '<button type="button" data-type="' + esc(tp.key) + '" class="' + (tp.key === W.type ? 'sel' : '') + '">' + esc(tp.label) + '</button>'; }).join('') + '</div>' +
           '<label for="wName">What\u2019s your collection called?</label><input type="text" id="wName" maxlength="40" value="' + esc(W.name) + '" placeholder="e.g. Jo\u2019s Comic Vault">' +
           '<label for="wTag">A short tagline (optional)</label><input type="text" id="wTag" maxlength="60" value="' + esc(W.tagline) + '" placeholder="e.g. Every issue, every variant">' +
           '<label for="wCur">Money in</label><select id="wCur">' + ['\u00A3', '$', '\u20AC', 'A$', 'C$', 'NZ$', '\u00A5', 'kr'].map(function (c) { return '<option' + (c === W.currency ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select>' +
@@ -1379,6 +1396,7 @@
         var p = pal();
         h = '<h1>' + (first ? '5. All good?' : 'Check and save') + '</h1>' + stepsBar() + e + '<div class="card stack">' +
           '<p><b>' + esc(W.name) + '</b>' + (W.tagline ? '<br><span class="hint">' + esc(W.tagline) + '</span>' : '') + '</p>' +
+          (typ(W.type) ? '<p>Collection type: <b>' + esc(typ(W.type).label) + '</b></p>' : '') +
           '<p>Look: <b>' + esc(p.label || W.palette) + '</b>' + (W.accent ? ' with a custom top bar' : '') + (W.logo ? ', new logo' : '') + (W.bg ? ', background picture' : '') + '</p>' +
           '<p>Categories: ' + esc(cats().slice(0, 8).join(', ')) + (cats().length > 8 ? ' and ' + (cats().length - 8) + ' more' : '') + '</p>' +
           '<p>' + (W.users.filter(function (u) { return u.name; }).length <= 1 ? 'Just you: <b>' + esc(W.users[0].name) + '</b>' : 'People: ' + W.users.filter(function (u) { return u.name; }).map(function (u) { return esc(u.name) + ' (' + u.role + ')'; }).join(', ')) + '</p></div>' +
@@ -1397,6 +1415,7 @@
       if ($('wPin')) { W.pin = $('wPin').value; W.pin2 = $('wPin2').value; }
     }
     function check() {
+      if (W.step === 1 && first && !W.type) return 'Pick what you collect (you can change it later).';
       if (W.step === 1 && !W.name) return 'Give your collection a name first.';
       if (W.step === 3 && !cats().length) return 'Add at least one category (you can change them later).';
       if (W.step === 4) {
@@ -1441,6 +1460,8 @@
     root.onclick = function (ev) {
       var pb = ev.target.closest('[data-pal]');
       if (pb) { W.palette = pb.getAttribute('data-pal'); render(); return; }
+      var tb = ev.target.closest('[data-type]');
+      if (tb) { applyTypeCats(tb.getAttribute('data-type')); render(); return; }
       var b = ev.target.closest('[data-w]'); if (!b) return;
       var a = b.getAttribute('data-w');
       grab();
@@ -1456,7 +1477,7 @@
       else if (a === 'save') save();
     };
     function save() {
-      var data = { name: W.name, tagline: W.tagline, palette: W.palette, accent: W.accent, currency: W.currency, categories: cats(),
+      var data = { name: W.name, tagline: W.tagline, palette: W.palette, accent: W.accent, currency: W.currency, collectionType: W.type, categories: cats(),
         users: W.users.filter(function (u) { return u.name; }), pin: W.pin, logo: W.logo ? { mime: W.logo.mime, b64: W.logo.b64 } : null,
         bg: W.bg ? { mime: W.bg.mime, b64: W.bg.b64 } : null, removeLogo: W.removeLogo, removeBg: W.removeBg,
         shareHandle: W.x.shareHandle, kidFunWorth: !!W.x.kidFunWorth, kidLetterTitle: W.x.kidLetterTitle, kidLetter: W.x.kidLetter, kidNotes: W.x.kidNotes };
@@ -1466,10 +1487,36 @@
         L.del('theme');
         if (r && r.token) { L.set('dadToken', r.token.token); L.set('dadTokenExp', String(r.token.expires)); }
         if (first) { L.set('role', r.owner); }
-        show('<div class="splash"><div style="font-size:64px">\uD83C\uDF89</div><h1>' + (first ? 'You\u2019re all set!' : 'Saved!') + '</h1>' +
-          (first ? '<p>Next: add it to your home screen so it\u2019s one tap away.</p><div class="card stack" style="text-align:left"><p><b>Android (Chrome):</b> tap \u22EE (top right) \u2192 <b>Install app</b> or <b>Add to Home screen</b>.</p><p><b>iPhone (Safari):</b> tap the Share button \u2192 <b>Add to Home Screen</b>.</p></div>' : '') +
-          '<button class="btn main full" id="ckDone">Open my app \u2192</button></div>');
-        $('ckDone').onclick = function () { location.replace(location.pathname + '?api=' + encodeURIComponent(API)); };
+        var ex = r && r.examples, typLabel = (typ(W.type) && typ(W.type).label) || 'items';
+        var homeHint = first ? '<p>Next: add it to your home screen so it\u2019s one tap away.</p><div class="card stack" style="text-align:left"><p><b>Android (Chrome):</b> tap \u22EE (top right) \u2192 <b>Install app</b> or <b>Add to Home screen</b>.</p><p><b>iPhone (Safari):</b> tap the Share button \u2192 <b>Add to Home Screen</b>.</p></div>' : '';
+        var swapped = !first && ex && ex.items && ex.items.length;
+        var offer = (first && ex && ex.items && ex.items.length) || swapped;
+        function openApp() { location.replace(location.pathname + '?api=' + encodeURIComponent(API)); }
+        function showDone(extra) {
+          show('<div class="splash"><div style="font-size:64px">\uD83C\uDF89</div><h1>' + (first ? 'You\u2019re all set!' : 'Saved!') + '</h1>' +
+            (extra || '') + homeHint +
+            '<button class="btn main full" id="ckDone">Open my app \u2192</button></div>');
+          $('ckDone').onclick = openApp;
+        }
+        if (offer) {
+          var n = ex.items.length;
+          var lead = first
+            ? '<p>I\u2019ve added ' + n + ' example ' + esc(typLabel.toLowerCase()) + ' so you can look around. Keep them, edit them, or remove them now.</p>'
+            : '<p>I\u2019ve swapped the example items to match <b>' + esc(typLabel) + '</b>.</p>';
+          show('<div class="splash" style="min-height:auto"><div style="font-size:64px">\uD83C\uDF89</div><h1>' + (first ? 'You\u2019re all set!' : 'Saved!') + '</h1>' + lead +
+            '<div class="card stack" style="text-align:left"><ul>' + ex.items.map(function (nm) { return '<li>' + esc(nm) + '</li>'; }).join('') +
+            (ex.wanted ? '<li>Wanted: ' + esc(ex.wanted) + '</li>' : '') +
+            (ex.checklist ? '<li>A small example checklist</li>' : '') + '</ul></div>' +
+            '<button class="btn main full" id="ckKeep">Keep the examples</button>' +
+            '<button class="btn full" id="ckWipe">Remove example items</button></div>');
+          $('ckKeep').onclick = function () { showDone(first ? '' : ''); };
+          $('ckWipe').onclick = function () {
+            show('<div class="splash"><div class="spin"></div><p>Removing the examples\u2026</p></div>');
+            post('removeExampleItems', [L.get('dadToken')]).then(function () {
+              showDone('<p>The example items are gone. You can add your own things whenever you\u2019re ready.</p>');
+            }).catch(function (e) { showDone('<p class="hint">' + esc(e.message) + '</p>'); });
+          };
+        } else showDone();
       }).catch(function (e) { W.err = e.message; W.step = 5; render(); });
     }
     render();

@@ -3248,6 +3248,9 @@ SCREENS.who = function () {
       if (b.missing && (b.missing.tabs.length || b.missing.columns.length)) {
         h += '<div class="warn">\uD83D\uDEA7 The sheet is still being tidied up, so a few bits (like ' + esc(b.missing.columns.concat(b.missing.tabs).join(', ')) + ') will appear once that\u2019s finished. Everything else works.</div>';
       }
+      if (isPriv() && b.exampleCount) {
+        h += '<div class="nudge">The items named \u201CExample -\u2026\u201D are just samples so you can look around. <button class="btn small" data-act="removeExamples">Remove example items</button></div>';
+      }
       h += '<div class="tiles">';
       // Photos to take
       h += '<div class="card yel tile"><div class="head">\uD83D\uDCF8 Photos to take</div><div class="big">' + t.photos.count + '</div>';
@@ -3412,7 +3415,8 @@ SCREENS.who = function () {
         '<h2>Photos</h2><div id="gallery" class="gallery"><div class="hint">' + (it.folderId ? 'Loading photos\u2026' : (standSrc ? 'Reference picture \u2014 still to film.' : 'No photos yet.')) + '</div></div>' +
         (plats ? '<div class="card skyL"><h3>\uD83D\uDCE3 Posted on</h3><div class="chips">' + plats + '</div><p class="hint">Tap one to tick it off when it\u2019s been posted.</p></div>' : '') +
         '<div class="card"><dl class="facts">' + facts.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('') + '</dl></div>' +
-        '<div id="cfBox">' + cfHtml(it) + '</div>';
+        '<div id="cfBox">' + cfHtml(it) + '</div>' +
+        (isPriv() && !it.offlineCopy ? '<div class="card"><button class="btn full" data-act="removeItem">Remove item</button><p class="hint">It comes off your collection and goes to Removed items. You can put it back any time. Photos stay in its folder.</p></div>' : '');
       setMain(h);
       setTimeout(cfLoadPhotos, 30);
       if (!it.folderId) {
@@ -3968,6 +3972,77 @@ SCREENS.who = function () {
         list.map(function (it) { return '<div class="li"><div class="grow">' + esc(it.name) + '<small>' + esc(it.range) + '</small></div><button class="btn yel small" data-act="valueFor" data-key="' + esc(it.key) + '">Add value</button></div>'; }).join('') + '</div>');
     }).catch(oops);
   };
+  function removeExamplesUI() {
+    var ex = (S.boot && S.boot.examples) || {};
+    var names = (ex.items || []).concat((ex.wanted || []).map(function (n) { return 'Wanted: ' + n; }));
+    if (ex.checklist) names.push('The tab \u201C' + ex.checklist + '\u201D');
+    if (!names.length) { toast('There are no example items to remove', 'good'); return; }
+    var body = 'This only removes the example rows' + (ex.checklist ? ' and the example checklist tab' : '') + ':</p><ul>' +
+      names.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul><p>Your own items are left alone. This can\u2019t be undone, except by adding them again.';
+    confirmSheet('Remove example items?', body, 'Remove them', 'Keep them').then(function (yes) {
+      if (!yes) return;
+      if (THEME.needsPin && !dadUnlocked()) { S.afterPin = ['settings', {}]; askDadPin(S.role || PRIV); return; }
+      busy('Removing examples\u2026');
+      call('removeExampleItems').then(function (r) {
+        return call('getBootstrap', S.role).then(function (b) {
+          S.boot = b; if (b.items) S.items = b.items;
+          done();
+          var n = (r && r.removed && r.removed.items) ? r.removed.items.length : 0;
+          toast('Removed ' + n + ' example item' + (n === 1 ? '' : 's'), 'good');
+          go('settings', {}, true);
+        });
+      }).catch(function (e) { done(); oops(e); });
+    });
+  }
+  function removeItemUI() {
+    var it = S.current;
+    if (!it) return;
+    if (THEME.needsPin && !dadUnlocked()) { S.afterPin = ['item', { key: it.key }]; askDadPin(S.role || PRIV); return; }
+    confirmSheet('Remove \u201C' + it.name + '\u201D?', 'It comes off your collection and goes to the Removed items list (More \u2192 Removed items, or Settings). You can put it back any time. Photos stay in its Drive folder.', 'Remove it', 'Keep it').then(function (yes) {
+      if (!yes) return;
+      busy('Moving it to Removed items\u2026');
+      call('removeItem', it.key, it.name, S.role).then(function () {
+        return call('getBootstrap', S.role).then(function (b) {
+          S.boot = b; if (b.items) S.items = b.items;
+          done();
+          toast('\u201C' + it.name + '\u201D is in Removed items', 'good');
+          go('collection', {}, true);
+        });
+      }).catch(function (e) { done(); oops(e); });
+    });
+  }
+  function restoreItemUI(key, name) {
+    if (THEME.needsPin && !dadUnlocked()) { S.afterPin = ['removed', {}]; askDadPin(S.role || PRIV); return; }
+    confirmSheet('Put \u201C' + (name || 'this item') + '\u201D back?', 'It goes back into your collection with the same Item ID. Photos stay in its folder.', 'Put it back', 'Not now').then(function (yes) {
+      if (!yes) return;
+      busy('Putting it back\u2026');
+      call('restoreItem', key, name, S.role).then(function (r) {
+        return call('getBootstrap', S.role).then(function (b) {
+          S.boot = b; if (b.items) S.items = b.items;
+          done();
+          toast('\u201C' + (r && r.name || name) + '\u201D is back in your collection', 'good');
+          if (r && r.key) go('item', { key: r.key }, true);
+          else go('removed', {}, true);
+        });
+      }).catch(function (e) { done(); oops(e); });
+    });
+  }
+  SCREENS.removed = function () {
+    if (!isPriv()) { go('settings'); return; }
+    busy('Opening removed items\u2026');
+    call('getRemovedItems', S.role).then(function (list) {
+      done();
+      list = list || [];
+      if (S.boot) S.boot.removedCount = list.length;
+      var h = backBtn() + '<h1>Removed items</h1><p class="hint">These came off your collection. Photos are still in their folders. Put one back and it returns with the same Item ID.</p>';
+      if (!list.length) h += '<div class="nudge">Nothing here. When you tap Remove item on something, it turns up in this list.</div>';
+      else h += '<div class="list">' + list.map(function (it) {
+        return '<div class="li"><div class="grow">' + esc(it.name) + '<small>' + esc([it.id, it.range, it.removedOn ? ('Removed ' + it.removedOn) : ''].filter(Boolean).join(' \u00B7 ')) + '</small></div>' +
+          '<button class="btn main small" data-act="restoreItem" data-key="' + esc(it.key) + '" data-name="' + esc(it.name) + '">Put back</button></div>';
+      }).join('') + '</div>';
+      setMain(h);
+    }).catch(function (e) { done(); oops(e); });
+  };
   SCREENS.settings = function () {
     var f = S.boot ? S.boot.folders : null;
     setMain(backBtn() + '<h1>Settings</h1><div class="card stack">' +
@@ -3976,7 +4051,9 @@ SCREENS.who = function () {
       '<button class="btn pink full" data-act="kidEnter">\uD83E\uDDD2 Kid mode</button><p class="hint">Big buttons, photos, points and badges for a child. Never any prices. Getting out needs your PIN.</p>' +
       '<p class="hint">\uD83D\uDCF4 Works offline: the last collection you opened is kept on this phone. Changes made with no signal sync automatically.' + (NET.queueLen ? ' <b>' + NET.queueLen + ' waiting.</b>' : '') + '</p>' +
       (THEME.needsPin && isPriv() ? '<button class="btn full" data-act="lockPriv">\uD83D\uDD12 Lock ' + esc(PRIV) + ' view</button>' : '') +
-      (THEME.generic && isPriv() ? '<a class="btn yel full" href="?settings=1">\u2699\uFE0F Change name, colours, people</a>' : '') +
+      (THEME.generic && isPriv() ? '<a class="btn yel full" href="?settings=1">\u2699\uFE0F Change name, type, colours, people</a>' : '') +
+      (THEME.generic && isPriv() && S.boot && S.boot.exampleCount ? '<button class="btn full" data-act="removeExamples">Remove example items</button>' : '') +
+      (isPriv() ? '<button class="btn full" data-act="go" data-to="removed">Removed items' + (S.boot && S.boot.removedCount ? ' (' + S.boot.removedCount + ')' : '') + '</button>' : '') +
       (THEME.generic ? '<a class="btn full" href="?reset=1">\uD83D\uDD0C Connect a different collection</a>' : '') +
       '<button class="btn full" data-act="startTour">\uD83E\uDDED Walkthrough: every screen (2 min)</button>' +
       '<button class="btn full" data-act="go" data-to="guide">Show the welcome cards</button>' +
@@ -4001,6 +4078,7 @@ SCREENS.who = function () {
       tiles.push(['badgeEdit', '\uD83C\uDFC6', KID_ROLE + '\u2019s badges', 'Add badges, change tiers, mark earned']);
       tiles.push(['value', '\uD83D\uDCB7', 'Value', 'Private: totals, top 10, paid vs value']);
     }
+    if (isPriv()) tiles.push(['removed', '\uD83D\uDDD1\uFE0F', 'Removed items', 'Things you took out, ready to put back']);
     tiles.push(['export', '\uD83D\uDCE4', 'Export', 'Save a list as a spreadsheet file or PDF'],
       ['help', '\u2753', 'Help', 'How everything works'],
       ['settings', '\u2699\uFE0F', 'Settings', 'Switch user, tour, links']);
@@ -4011,7 +4089,7 @@ SCREENS.who = function () {
 
   /* ---------------- Help ---------------- */
   var FAQ = [
-    ['\u2795 Adding something new', ['Tap <b>Add</b> at the bottom.', 'Take a photo (front first), type a name, pick the category, then the condition. That\u2019s it.', 'Everything else (year, maker, packaging, price) is optional under \u201CMore details\u201D.', 'If it looks like you already have it, I\u2019ll ask before adding a second one.']],
+    ['\u2795 Adding, editing and removing', ['Tap <b>Add</b> at the bottom to add something new.', 'Take a photo (front first), type a name, pick the category, then the condition. That\u2019s it.', 'Open any item and tap <b>Edit details</b> to change it.', 'Tap <b>Remove item</b> to take it off the collection. It goes to <b>Removed items</b> (under More or Settings) and you can put it back. Photos stay in its folder.', 'Everything else (year, maker, packaging, price) is optional under \u201CMore details\u201D.', 'If it looks like you already have it, I\u2019ll ask before adding a second one.']],
     ['\uD83D\uDCF8 Photos', ['Open any item and tap <b>Add photo / video</b>. It saves straight into that item\u2019s own Drive folder. Videos play in the app when you tap them; Open in Drive is still there as a fallback.', 'Tap <b>New main photo</b> to replace the picture that shows in the lists. The old one stays in the folder - nothing is deleted.', 'Tap any photo to see it big, then <b>Make main photo</b> to pick a different main one.', 'No faces in shot, please. Hands are fine.']],
     ['\uD83E\uDD14 Do I own it? + barcode scan', ['Type any name in <b>Do I own it?</b> on Home - it tells you yes, maybe or no as you type, even with spelling mistakes.', 'Tap <b>\uD83D\uDCF7 Scan</b> and point the camera at a box\u2019s barcode. If the barcode is saved on an item it matches straight away.', 'First time for a barcode? Search the name and tap the item to save the barcode on it. Or open any item and tap <b>Save barcode</b>.']],
     ['\uD83D\uDCF4 No signal', ['The last collection you opened is kept on the phone, with photos you\u2019ve already seen.', 'Adds, edits, ticks and photos made with no signal are kept on the phone and sync on their own when you\u2019re back online.']],
@@ -4025,7 +4103,7 @@ SCREENS.who = function () {
     ['\uD83D\uDDD3\uFE0F Item history', ['Under More \u2192 <b>Item history</b>: a timeline of when things joined, month by month, with where they came from.', 'It reads Purchase Date, then Date got, then Photo date from the sheet. Anything with no date is listed at the bottom so you can fill it in.', 'Prices only show for ' + esc(THEME.privateRole) + '.']],
     ['\uD83D\uDCCA Stats and value', ['<b>Stats</b> shows totals, categories, conditions, years and what\u2019s been posted.', 'Money (paid and value) only shows for ' + esc(THEME.privateRole) + '.', THEME.needsPin ? esc(THEME.privateRole) + ' view asks for a 4-digit PIN (once per device, for about 12 hours). Lock it again any time from Settings.' : '']],
     ['\uD83D\uDCE4 Export', ['Under More \u2192 <b>Export</b> you can save the whole collection, or what you\u2019ve filtered, as a spreadsheet file (CSV) or a PDF.', 'Files are saved into Drive and the link opens them.']],
-    ['\uD83D\uDEE1\uFE0F Is it safe to tap around?', ['Yes. The app never deletes anything - no rows, no photos, no folders.', 'If something looks wrong, tap <b>I\u2019m stuck \u2192 Refresh</b>.']],
+    ['\uD83D\uDEE1\uFE0F Is it safe to tap around?', ['The app never deletes your files or photos.', 'On an item, <b>Remove item</b> moves it to the Removed items list (under More or Settings). You can <b>Put back</b> any time. Its Drive folder stays put.', 'If something looks wrong, tap <b>I\u2019m stuck \u2192 Refresh</b>.']],
     ['\uD83D\uDCF1 Put it on your home screen', ['iPhone (Safari): tap Share, then <b>Add to Home Screen</b>.', 'Android (Chrome): tap \u22EE, then <b>Add to Home screen</b>.']]
   ];
   SCREENS.help = function () {
@@ -4044,19 +4122,19 @@ SCREENS.who = function () {
     { screen: 'home', sel: '.tiles .tile', t: 'Your to-do board', b: 'Each box is one job (photos to take, values to add, the Drop Zone) with one button to sort it.' },
     { screen: 'collection', sel: '#colSearch', t: 'Collection', b: 'Everything you own with photos. Search, filter by category, condition, status or posted, and sort newest, A to Z or by year.' },
     { screen: 'collection', sel: '.grid .card, .grid > *', t: 'Open an item', b: 'Tap any picture to see the item, its photos, history and details.' },
-    { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '[data-act=snapCurrent]', t: 'An item', b: 'Add photos or a video with the camera, pick the main photo, edit details, save a barcode, tick where it\u2019s been posted, share a find card, or price-check it.' },
+    { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '[data-act=snapCurrent]', t: 'An item', b: 'Add photos or a video with the camera, pick the main photo, edit details, save a barcode, tick where it\u2019s been posted, share a find card, or price-check it. Remove item moves it to Removed items, where you can put it back; photos stay in its folder.' },
     { screen: 'item', params: function () { return { key: tourItemKey() }; }, need: tourItemKey, sel: '#cfBox .cfCard', t: 'Your own fields', b: 'Tap \uFF0B Add field to add details that suit your collection: text, a number, a date, a tick, a private money value, a photo, or a dated log (date, note, cost, photos) like a Service log or Repairs. Rename or remove them under Edit fields; nothing is ever deleted.' },
     { screen: 'add', sel: '#main .card, #main', t: 'Add something new', b: 'Snap it, name it (or scan its barcode to fill the name in), pick the category and condition. Done: it gets its own photo folder.' },
     { screen: 'wanted', sel: '#wantSearch', t: 'Wanted', b: 'Your hunt list, grouped by category. Search it as you type. Items still missing from your checklists show up here too.' },
     { screen: 'wanted', sel: '[data-act=findCheapest]', t: 'Find it online', b: 'Tap Shop on any wanted item for one-tap searches on eBay (live and sold), Amazon, Vinted, Facebook Marketplace and Google Shopping.' },
     { screen: 'wanted', sel: '[data-act=gotWanted]', t: 'Got it!', b: 'When one arrives, tap Got it and it moves into the collection, ready for a photo.' },
-    { screen: 'more', sel: '.menu', t: 'More', b: 'Stats, posted on socials, spares and duplicates, item history, the missing list, checklists, photos to take, export and help.' },
+    { screen: 'more', sel: '.menu', t: 'More', b: 'Stats, posted on socials, spares and duplicates, item history, the missing list, checklists, photos to take, removed items (to put something back), export and help.' },
     { screen: 'stats', sel: '#main h1, #main .card', t: 'Stats', b: 'Totals, categories, conditions, decades and newest additions. Money only shows when you\u2019re unlocked.' },
     { screen: 'spares', sel: '#main h1', t: 'Spares and duplicates', b: 'Anything you own more than once, plus near-matches. Mark the spare for sale; nothing is deleted.' },
     { screen: 'history', sel: '#main h1', t: 'Item history', b: 'A month-by-month timeline of when things joined and where from.' },
     { screen: 'export', sel: '#main h1', t: 'Export', b: 'Save the collection (or what you filtered) to Drive as a spreadsheet file or a PDF.' },
     { screen: 'settings', sel: '[data-act=kidEnter]', t: 'Kid mode', b: 'Hand the phone to a child: big buttons, photos, points, badges and jobs, never any prices. Getting out needs your PIN.' },
-    { screen: 'settings', sel: '[data-act=startTour]', t: 'Settings', b: 'Lock your money view, add family or a kid, change the name and colours, or run this walkthrough again.' },
+    { screen: 'settings', sel: '[data-act=startTour]', t: 'Settings', b: 'Lock your money view, add family or a kid, change the name, type and colours, open Removed items, clear example items, or run this walkthrough again.' },
     { screen: 'home', sel: '#stuckBtn', t: 'I\u2019m stuck', b: 'On every screen. It explains that screen, refreshes, or opens Help.' },
     { screen: 'home', sel: null, t: 'You\u2019re all set! \uD83C\uDF89', b: 'The app never deletes anything, so tap around and explore. Help is under More any time.' }
   ];
@@ -4939,6 +5017,8 @@ SCREENS.who = function () {
       case 'videoCurrent': openCamera({ key: S.current.key, name: S.current.name }, 'video'); break;
       case 'findCheapest': findCheapest(+el.getAttribute('data-i')); break;
       case 'edit': go('edit', {}); break;
+      case 'removeItem': removeItemUI(); break;
+      case 'restoreItem': restoreItemUI(el.getAttribute('data-key'), el.getAttribute('data-name')); break;
       case 'cfAdd': cfAdd(); break;
       case 'cfEdit': cfEdit(+el.getAttribute('data-i')); break;
       case 'cfPhoto': cfPhoto(+el.getAttribute('data-i')); break;
@@ -5025,6 +5105,7 @@ SCREENS.who = function () {
       case 'addTypeBc': keepAddName(); SCAN.opts = { add: true }; typeCode(); break;
       case 'addClearBc': var A0 = addState(); A0.barcode = ''; A0.bcLook = undefined; A0.bcRef = ''; go('add', {}, true); break;
       case 'kidEnter': enterKid(); break;
+      case 'removeExamples': removeExamplesUI(); break;
       case 'kidExit': exitKid(); break;
       case 'kidItem': $('sheet').hidden = true; go('kidItem', { key: key }); break;
       case 'kidMore': S.kidShown = (S.kidShown || 40) + 40; if (S.redrawKid) S.redrawKid(); break;
