@@ -1126,7 +1126,7 @@
 (function () {
   'use strict';
   var PFX = 'ck_'; window.LS_PREFIX = PFX;
-  var VER = 'cs96-20261122a';
+  var VER = 'cs97-20261122b';
   var L = {
     get: function (k) { try { return localStorage.getItem(PFX + k) || ''; } catch (e) { return ''; } },
     set: function (k, v) { try { localStorage.setItem(PFX + k, v); } catch (e) { /* full or private */ } },
@@ -1391,7 +1391,7 @@
             '<label for="wKidTitle">Letter title</label><input type="text" id="wKidTitle" maxlength="100" value="' + esc(W.x.kidLetterTitle) + '" placeholder="e.g. How our collection started">' +
             '<label for="wKidLetter">A letter they see now and then (leave blank for none)</label><textarea id="wKidLetter" maxlength="12000" placeholder="Write it like a note. Leave a blank line between paragraphs.">' + esc(W.x.kidLetter) + '</textarea>' +
             '<label for="wKidNotes">Little notes, one per line (blank = friendly ones we wrote)</label><textarea id="wKidNotes" maxlength="12000" placeholder="Proud of you!">' + esc(W.x.kidNotes) + '</textarea>' +
-            '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidFun"' + (W.x.kidFunWorth ? ' checked' : '') + ' style="width:22px;height:22px"> Show a fun \u201Cwhat\u2019s it worth?\u201D card in ice creams, dogs and pizzas (never real money)</label>' +
+            '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidFun"' + (W.x.kidFunWorth ? ' checked' : '') + ' style="width:22px;height:22px"> Show a fun \u201Cwhat\u2019s it worth?\u201D card in ice creams, cakes and things from this collection (never real money)</label>' +
             '<label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="wKidDocs"' + (W.x.kidsCanAddDocs ? ' checked' : '') + ' style="width:22px;height:22px"> Kids can add manuals and certificates (not receipts or valuations)</label></div>' : '') +
           nav();
       } else if (W.step === 5) {
