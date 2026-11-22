@@ -29,8 +29,11 @@
   /* ---------------- theme ---------------- */
   (function applyTheme() {
     var c = THEME.colours, r = document.documentElement.style;
-    var vars = { sky: c.sky, skyL: c.skyLight, yel: c.yellow, pink: c.pink, pinkL: c.pinkLight, ink: c.ink, green: c.green, amber: c.amber, red: c.red, white: c.white };
-    Object.keys(vars).forEach(function (k) { if (vars[k]) r.setProperty('--' + k, vars[k]); });
+    /* ck-theme v1 */
+    var vars = { sky: c.sky, skyL: c.skyLight, yel: c.yellow, pink: c.pink, pinkL: c.pinkLight, ink: c.ink, green: c.green, amber: c.amber, red: c.red, white: c.white,
+      bar: c.bar, barInk: c.barInk, barLine: c.barLine, main: c.main, mainInk: c.mainInk, navOn: c.navOn, navOnInk: c.navOnInk, guide: c.guide, guideInk: c.guideInk, skyArt: c.skyArt, tint: c.tint };
+    Object.keys(vars).forEach(function (k) { if (vars[k]) r.setProperty('--' + k, vars[k]); else r.removeProperty('--' + k); });
+    try { var tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.setAttribute('content', c.chrome || c.yellow || c.sky); } catch (eT) { /* ignore */ }
     document.getElementById('logo').innerHTML = THEME.mascotSvg.replace('id="fsBite"', 'id="fsBiteLogo"').replace('url(#fsBite)', 'url(#fsBiteLogo)');
     document.getElementById('appName').textContent = THEME.appName;
     if (THEME.showClouds) document.getElementById('sky').innerHTML = cloudsSvg();
