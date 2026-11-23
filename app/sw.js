@@ -1,8 +1,8 @@
 /* Collecson phone app. App files come from this site; collection data always comes live
    from the collector's own Apps Script and is never cached here. */
-const CACHE = 'collecson-app-cs97-20261122b';
+const CACHE = 'collecson-app-cs98-20261123';
 const BASE = new URL(self.registration.scope).pathname;   // wherever the app is hosted
-const SHELL = ['./', './index.html', './app.js?cs97-20261122b', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './lib/zxing.min.js?v4', './assets/LuckiestGuy-Regular.ttf', './assets/nunito.woff2', './assets/baloo2.woff2'];
+const SHELL = ['./', './index.html', './app.js?cs98-20261123', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './lib/zxing.min.js?v4', './assets/LuckiestGuy-Regular.ttf', './assets/nunito.woff2', './assets/baloo2.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => (k.indexOf('collecson-app-') === 0 || k.indexOf('ck-app-') === 0) && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));

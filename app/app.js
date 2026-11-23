@@ -2823,11 +2823,8 @@
   SCREENS.guide = function (p) {
     var cards = [
       ['Welcome to ' + THEME.appName + '!', 'Your whole collection lives in your own Google Sheet and Drive. This app is just a friendlier way in.'],
-      ['Snap it, save it', 'Tap Add, take a photo, give it a name, pick its category and condition. Done - it\u2019s in the sheet with its own photo folder.'],
-      ['Find anything', 'Browse with photos, search, and filter by category, line, condition or posted. Tap any item to see all its photos.'],
-      ['Track the fun stuff', 'Wanted list, missing checklists, stats, spares to sell and what\u2019s been posted on socials - all under More.'],
-      ['Make it fit your collection', 'Tractors or trainers, stamps or skateboards: on any item tap \uFF0B Add field for your own details, like a serial number, mileage, a private value, a photo or a dated Service log.'],
-      ['One job at a time', 'Home shows what needs doing, each with one button to sort it. Stuck? The \u201CI\u2019m stuck\u201D button is on every screen.']
+      ['Snap it, save it', 'Tap Add, take a photo, give it a name, pick its category and condition. Done \u2014 it\u2019s in the sheet with its own photo folder.'],
+      ['Find anything, later', 'Search and browse with photos. Wanted lists, checklists and your own fields are there when you want them. You can skip this intro any time.']
     ];
     var i = p.i || 0, c = cards[i];
     setMain('<div class="card guide yel"><div class="mascot">' + THEME.mascotSvg.replace(/fsBite/g, 'fsBiteG') + '</div><h1>' + esc(c[0]) + '</h1><p>' + esc(c[1]) + '</p>' +

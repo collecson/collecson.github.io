@@ -1126,7 +1126,7 @@
 (function () {
   'use strict';
   var PFX = 'ck_'; window.LS_PREFIX = PFX;
-  var VER = 'cs97-20261122b';
+  var VER = 'cs98-20261123';
   var L = {
     get: function (k) { try { return localStorage.getItem(PFX + k) || ''; } catch (e) { return ''; } },
     set: function (k, v) { try { localStorage.setItem(PFX + k, v); } catch (e) { /* full or private */ } },
@@ -1285,7 +1285,7 @@
   /* ---------- owner PIN (for changing settings later) ---------- */
   function tokenOk() { var tk = L.get('dadToken'), ex = +L.get('dadTokenExp') || 0; return !!(tk && ex > Date.now() + 60000); }
   function unlockThen(t, next, err) {
-    if (tokenOk()) return next();
+    if (tokenOk() || (t && t.needsPin === false)) return next();
     show('<h1>\uD83D\uDD12 Owner only</h1>' + (err ? '<div class="err">' + esc(err) + '</div>' : '') +
       '<div class="card stack"><p>Type the owner PIN to change the name, colours, pictures and people.</p>' +
       '<input type="password" id="ckPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4-number PIN">' +
@@ -1306,7 +1306,7 @@
   }
   function runWizard(t, info, first) {
     var W = {
-      step: first ? 0 : 1, name: info.name || '', tagline: info.tagline || '', palette: info.palette || 'collecson', accent: info.accent || '',
+      step: first ? 1 : 1, name: info.name || '', tagline: info.tagline || '', palette: info.palette || 'collecson', accent: info.accent || '',
       type: info.type || '', types: info.types || [],
       currency: info.currency || '\u00A3', categories: (info.categories || []).join('\n'),
       users: info.users && info.users.length ? info.users.map(function (u) { return { name: u.name, role: u.role }; }) : [{ name: '', role: 'Owner' }],
@@ -1330,13 +1330,16 @@
       var prev = catsText(typCats(W.type)).trim();
       var orig = (info.categories || []).join('\n').trim();
       if (!cur || cur === prev || cur === orig) W.categories = catsText(typCats(next));
+      var prevDef = typ(W.type) && typ(W.type).defaultName;
+      var nextDef = typ(next) && typ(next).defaultName;
+      if (first && (!W.name || W.name === prevDef || W.name === 'My collection')) W.name = nextDef || 'My collection';
       W.type = next;
     }
     function preview() {
       setVars(palColours(pal(), W.accent));
       var bg = W.removeBg ? '' : (W.bg ? W.bg.preview : existingBg); setBg(root, bg);
     }
-    var N = 5;
+    var N = first ? 3 : 5;
     function stepsBar() { var h = '<div class="steps">'; for (var i = 1; i <= N; i++) h += '<span class="' + (i <= W.step ? 'on' : '') + '"></span>'; return h + '</div>'; }
     function nav(nextLabel) {
       return '<div class="nav">' + (W.step > (first ? 0 : 1) ? '<button class="btn" data-w="back">\u2190 Back</button>' : (first ? '' : '<a class="btn" href="./">Cancel</a>')) +
@@ -1346,6 +1349,26 @@
       preview();
       var h = '', e = W.err ? '<div class="err">' + esc(W.err) + '</div>' : '';
       W.err = '';
+      if (first) {
+        if (W.step < 1) W.step = 1;
+        if (W.step === 1) {
+          h = '<h1>What do you collect?</h1>' + stepsBar() + e + '<div class="card">' +
+            '<p class="hint">A couple of example items will match this, so you can see how the app works. You can change it later.</p><div class="types">' +
+            TYPES.map(function (tp) { return '<button type="button" data-type="' + esc(tp.key) + '" class="' + (tp.key === W.type ? 'sel' : '') + '">' + esc(tp.label) + '</button>'; }).join('') + '</div></div>' + nav();
+        } else if (W.step === 2) {
+          h = '<h1>Name your collection</h1>' + stepsBar() + e + '<div class="card">' +
+            '<label for="wName">What\u2019s it called?</label><input type="text" id="wName" maxlength="40" value="' + esc(W.name) + '" placeholder="e.g. My football cards">' +
+            '<p class="hint">You can change this later in Settings.</p></div>' + nav('Next \u2192');
+        } else {
+          h = '<h1>Pick a colour</h1>' + stepsBar() + e + '<div class="card"><label>Colours</label><div class="sw">' +
+            PALS.map(function (p) { return '<button data-pal="' + esc(p.key) + '" class="' + (p.key === W.palette ? 'sel' : '') + '"><i><b style="background:' + ((p.extra && p.extra.navOn) || p.sky) + '"></b><b style="background:' + p.yellow + '"></b><b style="background:' + p.pink + '"></b></i>' + esc(p.label) + '</button>'; }).join('') + '</div>' +
+            '<p class="hint">You can add a logo, a background or a PIN later in Settings. Prices stay hidden until you set a PIN.</p></div>' +
+            '<div class="nav">' + (W.step > 1 ? '<button class="btn" data-w="back">\u2190 Back</button>' : '') +
+            '<button class="btn green" data-w="save">\u2705 Finish setup</button></div>';
+        }
+        show(h);
+        return;
+      }
       if (W.step === 0) {
         h = '<div class="splash" style="min-height:70vh"><div class="lg">' + BOX + '</div><h1>Welcome! \uD83C\uDF89</h1><p>Let\u2019s make this app yours. It takes about 2 minutes: a name, a look, your categories and your PIN. It\u2019s set up for just you; family or a kid can be added later if you like.</p>' +
           '<p class="hint">You can change all of it later.</p><button class="btn main full" data-w="next">Let\u2019s go \u2192</button></div>';
@@ -1375,7 +1398,7 @@
         var own = W.users[0], others = W.users.slice(1), hasKid = others.some(function (u) { return u.role === 'Kid'; });
         h = '<h1>' + (first ? '4. You and your PIN' : 'You and your people') + '</h1>' + stepsBar() + e +
           '<div class="card"><label for="wOwner">Your name</label><input type="text" id="wOwner" maxlength="20" value="' + esc(own.name) + '" placeholder="e.g. Sam" autocomplete="given-name">' +
-          '<label for="wPin">' + (first ? 'Pick a 4-number PIN' : 'New PIN (leave blank to keep the old one)') + '</label><input type="password" id="wPin" inputmode="numeric" maxlength="4" autocomplete="new-password" value="' + esc(W.pin) + '">' +
+          '<label for="wPin">' + (first ? 'Pick a 4-number PIN' : (info.pinSet ? 'New PIN (leave blank to keep the old one)' : 'Set a 4-number PIN (keeps prices private \u2014 you can also do this later)')) + '</label><input type="password" id="wPin" inputmode="numeric" maxlength="4" autocomplete="new-password" value="' + esc(W.pin) + '">' +
           '<label for="wPin2">Type it again</label><input type="password" id="wPin2" inputmode="numeric" maxlength="4" autocomplete="new-password" value="' + esc(W.pin2) + '">' +
           '<p class="hint">The PIN keeps prices and values private and protects these settings. On your own phone you can stay unlocked for 30 days. It\u2019s scrambled before it\u2019s saved, so nobody (not even the sheet) can read it back.</p></div>' +
           (W.showPeople || others.length ?
@@ -1408,7 +1431,10 @@
     }
     function cats() { return W.categories.split(/\n|,/).map(function (s) { return s.trim(); }).filter(Boolean); }
     function grab() {
-      if ($('wName')) { W.name = $('wName').value.trim(); W.tagline = $('wTag').value.trim(); W.currency = $('wCur').value; W.x.shareHandle = $('wHandle').value.trim(); }
+      if ($('wName')) W.name = $('wName').value.trim();
+      if ($('wTag')) W.tagline = $('wTag').value.trim();
+      if ($('wCur')) W.currency = $('wCur').value;
+      if ($('wHandle')) W.x.shareHandle = $('wHandle').value.trim();
       if ($('wOwner')) W.users[0].name = $('wOwner').value.trim();
       if ($('wKidLetter')) { W.x.kidLetterTitle = $('wKidTitle').value.trim(); W.x.kidLetter = $('wKidLetter').value; W.x.kidNotes = $('wKidNotes').value; W.x.kidFunWorth = $('wKidFun').checked; if ($('wKidDocs')) W.x.kidsCanAddDocs = $('wKidDocs').checked; }
       if ($('wCats')) W.categories = $('wCats').value;
@@ -1417,9 +1443,11 @@
       if ($('wPin')) { W.pin = $('wPin').value; W.pin2 = $('wPin2').value; }
     }
     function check() {
-      if (W.step === 1 && first && !W.type) return 'Pick what you collect (you can change it later).';
-      if (W.step === 1 && !W.name) return 'Give your collection a name first.';
-      if (W.step === 3 && !cats().length) return 'Add at least one category (you can change them later).';
+      if (first && W.step === 1 && !W.type) return 'Pick what you collect (you can change it later).';
+      if (first && W.step === 2 && !W.name) return 'Give your collection a name first.';
+      if (W.step === 1 && !first && !W.type) return 'Pick what you collect (you can change it later).';
+      if (W.step === 1 && !first && !W.name) return 'Give your collection a name first.';
+      if (W.step === 3 && !first && !cats().length) return 'Add at least one category (you can change them later).';
       if (W.step === 4) {
         var named = W.users.filter(function (u) { return u.name; });
         var owners = named.filter(function (u) { return u.role === 'Owner'; });
@@ -1479,6 +1507,16 @@
       else if (a === 'save') save();
     };
     function save() {
+      if (first) {
+        grab();
+        if (!W.type) { W.err = 'Pick what you collect (you can change it later).'; W.step = 1; render(); return; }
+        if (!W.name) { W.err = 'Give your collection a name first.'; W.step = 2; render(); return; }
+        if (!W.users[0].name) W.users[0].name = 'Owner';
+        if (!W.users[0].role) W.users[0].role = 'Owner';
+        if (!cats().length && W.type) W.categories = catsText(typCats(W.type));
+        if (!W.currency) W.currency = '\u00A3';
+        W.pin = W.pin || '';
+      }
       var data = { name: W.name, tagline: W.tagline, palette: W.palette, accent: W.accent, currency: W.currency, collectionType: W.type, categories: cats(),
         users: W.users.filter(function (u) { return u.name; }), pin: W.pin, logo: W.logo ? { mime: W.logo.mime, b64: W.logo.b64 } : null,
         bg: W.bg ? { mime: W.bg.mime, b64: W.bg.b64 } : null, removeLogo: W.removeLogo, removeBg: W.removeBg,
